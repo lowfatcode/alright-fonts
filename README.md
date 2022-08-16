@@ -1,4 +1,4 @@
-# **PAF** - the "Pretty Alright Font Format" designed for embedding and low resource platforms
+# The "Pretty Alright Font Format" designed for embedded and low resource platforms
 
 ## Why?
 
