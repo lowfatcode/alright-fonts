@@ -1,0 +1,74 @@
+#!/usr/bin/env python3
+
+import sys
+from python_paf import Glyph, Point, Face, load_paf
+
+data = sys.stdin.buffer.read()
+
+face = load_paf(data)
+
+glyph = face.get_glyph(ord("a"))
+
+
+from PIL import Image, ImageDraw
+
+def draw(glyph, position, scale, colour=(255, 255, 255)):    
+  point_count = 0
+  for contour in glyph.contours:
+    for i in range(0, len(contour)):
+      p1 = contour[i].scale(scale)
+      p2 = (contour[i + 1] if i < len(contour) - 1 else contour[0]).scale(scale)
+
+      p1 = (p1.x + position.x, p1.y + position.y)
+      p2 = (p2.x + position.x, p2.y + position.y)
+
+      canvas.line((p1, p2), fill=colour)
+      point_count += 1
+
+      f = int((i / len(contour)) * 255)
+      #canvas.ellipse([p1[0] - 1, p1[1] - 1, p1[0] + 1, p1[1] + 1], fill=(f, 255 - f, 0, 255))
+
+image = Image.new("RGB", (1000, 1000)) 
+canvas = ImageDraw.Draw(image, "RGBA")
+canvas.rectangle((0, 0, 1000, 1000), fill=(60, 70, 80, 255))
+
+message = """1234567890
+
+!\"$%^&*()_+-=[]`\{\};'#:@~,./<>?\|
+
+Prow scuttle parrel provost Sail ho
+shrouds spirits boom mizzenmast
+yardarm. Pinnace holystone 
+mizzenmast quarter crow's nest 
+nipperkin grog yardarm hempen 
+halter furl.
+
+Swab barque interloper chantey 
+doubloon starboard grog black jack 
+gangway rutters.
+"""
+
+font_size = 64
+left_margin = 30
+
+caret = Point(left_margin, font_size)
+
+scale = font_size / 128
+spacing = 1
+line_spacing = 1
+for character in message:
+  if character == "\n":    
+    caret.x = left_margin
+    caret.y += font_size * line_spacing
+    continue
+
+  glyph = face.get_glyph(ord(character))
+
+  if not glyph:
+    continue
+  
+  draw(glyph, caret, scale)
+  caret.x += glyph.advance * scale * spacing
+
+image.show()
+
