@@ -30,15 +30,13 @@ parser.add_argument("--quality", type=str, choices=["low", "medium", "high"], de
 parser.add_argument("--characters", type=str, help="the list of characters that you want to extract. (default: ASCII character set)")
 parser.add_argument("--corpus", type=argparse.FileType("r"), help="corpus to select characters from")
 parser.add_argument("--quiet", action="store_true", help="suppress all progress and debug messages")
-parser.add_argument("out", type=argparse.FileType("wb"), help="the output filename")
+parser.add_argument("out", type=str, help="the output filename")
 args = parser.parse_args()
 
 # override print() to allow quiet mode to suppress output
 def print(*a, **kw):
   if not args.quiet:
     builtins.print(*a, **kw)
-
-out = args.out
 
 
 # load the requested font file
@@ -50,7 +48,13 @@ quality_map = {
   "medium": 10,
   "high": 1
 }
-encoder = Encoder(args.font, args.scale, quality=quality_map[args.quality])
+
+try:
+  encoder = Encoder(args.font, args.scale, quality=quality_map[args.quality])
+except:
+  print("Failed to load font - stopping.")
+  sys.exit(1)
+
 
 
 # determine glyph metric and coordinate scaling
@@ -115,6 +119,10 @@ for codepoint in character_codepoints:
 # write glyph dictionary to file
 print("> write output file in {} format".format(format))
 
+if len(encoder.glyphs) == 0:
+  print("No printable glyphs - stopping.")
+  sys.exit(1)
+
 # write header to file
 print("  - header")
 result = bytes()
@@ -139,39 +147,40 @@ for codepoint, glyph in encoder.glyphs.items():
 # write out the resulting paf font file in requested format
 # ===========================================================================
 
-# paf binary font file
-if args.format == "paf":
-  out.write(result)
+with open(args.out, "wb") as outfile:
+  # paf binary font file
+  if args.format == "paf":
+    outfile.write(result)
 
-# c(++) const array
-if args.format == "c":
-  out.write(b"const unsigned char _font[] = {\n")
-  i = 0
-  while i < len(result):
-    line = result[i:i + 12]
-    out.write(b"  ")
-    for char in line:
-      out.write("0x{:02x}".format(char).encode("ascii"))
-      if i < len(result) - 1:
-        out.write(b", ")   
-      i += 1   
-    out.write(b"\n")
-  out.write(b"};\n")
+  # c(++) const array
+  if args.format == "c":
+    outfile.write(b"const unsigned char _font[] = {\n")
+    i = 0
+    while i < len(result):
+      line = result[i:i + 12]
+      outfile.write(b"  ")
+      for char in line:
+        outfile.write("0x{:02x}".format(char).encode("ascii"))
+        if i < len(result) - 1:
+          outfile.write(b", ")   
+        i += 1   
+      outfile.write(b"\n")
+    outfile.write(b"};\n")
 
-# python array
-if args.format == "python":
-  out.write(b"_font = bytes([\n")
-  i = 0
-  while i < len(result):
-    line = result[i:i + 12]
-    out.write(b"  ")
-    for char in line:
-      out.write("0x{:02x}".format(char).encode("ascii"))
-      if i < len(result) - 1:
-        out.write(b", ")   
-      i += 1   
-    out.write(b"\n")
-  out.write(b"])\n")
-  pass
+  # python array
+  if args.format == "python":
+    ooutfileut.write(b"_font = bytes([\n")
+    i = 0
+    while i < len(result):
+      line = result[i:i + 12]
+      outfile.write(b"  ")
+      for char in line:
+        outfile.write("0x{:02x}".format(char).encode("ascii"))
+        if i < len(result) - 1:
+          outfile.write(b", ")   
+        i += 1   
+      outfile.write(b"\n")
+    outfile.write(b"])\n")
+    pass
 
 print("> output file size {} bytes and contains {} characters (avg. {} bytes per character)".format(len(result), printable_count, int(len(result) / printable_count)))

@@ -1,14 +1,37 @@
 #!/usr/bin/env python3
 
-import sys
+# renders a demo swatch using the font provided
+# 
+# either pass the font file in with the `--font` argument or pipe the file to stdin
+#
+# for example:
+#
+#   ./examples/python/render-demo --font out/roboto-black.paf
+#   ./pafinate --font fonts/Roboto-Black.tff --quality medium - | examples/python/render-demo
+
+
+# insert top level into python module search path so python_paf import works
+# what's the pythonic way to achieve this kind of structure of a repo with
+# a module and an isolated `examples` folder?
+import sys, os, argparse
+path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
+sys.path.insert(1, path)
+
 from python_paf import Glyph, Point, Face, load_paf
 
-data = sys.stdin.buffer.read()
+parser = argparse.ArgumentParser(description="Render a demo swatch of a .paf font file.")
+parser.add_argument("--font", type=argparse.FileType("rb"), help="the .paf font file you want to render")
+
+args = parser.parse_args()
+
+if args.font:
+  data = args.font.read()
+else:
+  # no font file provided, read font data from stdin
+  data = sys.stdin.buffer.read()
 
 face = load_paf(data)
-
 glyph = face.get_glyph(ord("a"))
-
 
 from PIL import Image, ImageDraw
 

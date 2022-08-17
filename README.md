@@ -22,6 +22,7 @@ Features:
 
 - support for TTF and OTF fonts
 - small file size - Roboto Black printable ASCII set in ~5kB (~50 bytes per glyph)
+- libraries for C++ and Python
 - tunable settings to trade off file size, contour complexity, and visual quality
 - glyph dictionary includes advance and bounding box metrics for fast layout
 - supports utf-8 codepoints or ascii character code

@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+
+for path in $(find ../google-fonts/* -maxdepth 0 -type d); do
+  basepath="$(basename -- $path)"
+  mkdir -p $basepath
+  echo "> processing directory $basepath"
+
+  for file in $(find $path/* -maxdepth 0); do
+    basename="$(basename -- $file)"
+    filename="${basename%.ttf}"
+    extension="${basename##*.}"
+
+    if [ "$extension" == "ttf" ] || [ "$extension" == "otf" ]
+    then
+      echo "  - convert $file into .paf"
+      ../pafinate --quiet --font $file $basepath/$filename.paf
+    else
+      cp $file $basepath/$filename
+      echo "  - copy $file"
+    fi
+  done
+done
