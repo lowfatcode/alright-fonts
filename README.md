@@ -1,6 +1,6 @@
 ![paf-logo](https://user-images.githubusercontent.com/297930/184892098-de607372-c4a0-4abe-bc27-8883d21eaef3.png)
 
-# The "Pretty Alright Font Format" designed for embedded and low resource platforms
+# The font format designed for embedded and low resource platforms.
 
 ## Why?
 
