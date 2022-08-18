@@ -186,11 +186,11 @@ The top bits of the first byte identify the type of encoding being used allowing
 
 |condition|byte1|byte2|byte3|offset|
 |---|:-:|:-:|:-:|--:|
-|`-16 <= x <= 15` and `y = 0`|`110xxxxx`|n/a|n/a|(x only) `+16`|
-|`x = 0` and `-16 <= y <= 15`|`111xxxxx`|n/a|n/a|(y only) `+16`|
-|`-4 <= x <= 3` and `-4 <= y <= 3`|`00xxxyyy`|n/a|n/a|`+4`|
-|`-64 <= x <= 63` and `-64 <= y <= 63`|`10xxxxxx`|`xyyyyyyy`|n/a|`+64`|
-|`-1024 <= x <= 1023` and `-1024 <= y <= 1023`|`01xxxxxx`|`xxxxxyyy`|`yyyyyyyy`|`+1024`|
+|`-16 <= x <= 15`<br>`y = 0`|`110xxxxx`|n/a|n/a|`+16`<br>(x only)|
+|`x = 0`<br>`-16 <= y <= 15`|`111xxxxx`|n/a|n/a|`+16`<br>(y only)|
+|`-4 <= x <= 3`<br>`-4 <= y <= 3`|`00xxxyyy`|n/a|n/a|`+4`|
+|`-64 <= x <= 63`<br>`-64 <= y <= 63`|`10xxxxxx`|`xyyyyyyy`|n/a|`+64`|
+|`-1024 <= x <= 1023`<br>`-1024 <= y <= 1023`|`01xxxxxx`|`xxxxxyyy`|`yyyyyyyy`|`+1024`|
 
 The packed `x` and `y` values are unsigned integers which contain the delta coordinate components + `offset`. When decoding you must subtract `offset` from the values to return them back to their signed range.
 
