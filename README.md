@@ -190,7 +190,7 @@ The top bits of the first byte identify the type of encoding being used allowing
 |`x = 0` and `-16 <= y <= 15`|`111xxxxx`|n/a|n/a|(y only) `+16`|
 |`-4 <= x <= 3` and `-4 <= y <= 3`|`00xxxyyy`|n/a|n/a|`+4`|
 |`-64 <= x <= 63` and `-64 <= y <= 63`|`10xxxxxx`|`xyyyyyyy`|n/a|`+64`|
-|`-512 <= x <= 511` and `-512 <= y <= 511`|`01xxxxxx`|`xxxxxyyy`|`yyyyyyyy`|`+512`|
+|`-1024 <= x <= 1023` and `-1024 <= y <= 1023`|`01xxxxxx`|`xxxxxyyy`|`yyyyyyyy`|`+1024`|
 
 The packed `x` and `y` values are unsigned integers which contain the delta coordinate components + `offset`. When decoding you must subtract `offset` from the values to return them back to their signed range.
 

@@ -45,8 +45,8 @@ def pack_glyph_contours(glyph):
         result += struct.pack(">BB", byte1, byte2)
       else:
         # three byte pack (0b01xxxxxx xxxxxyyy yyyyyyyy)
-        dx = delta.x + 512 # values offset by +512
-        dy = delta.y + 512 # values offset by +512
+        dx = delta.x + 1024 # values offset by +1024
+        dy = delta.y + 1024 # values offset by +1024
         byte1 = 0b01000000 | (dx >> 5)        
         byte2 = ((dx << 3) & 0xff) | (dy >> 8)
         byte3 = (dy & 0xff)

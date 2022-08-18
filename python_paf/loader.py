@@ -77,8 +77,8 @@ def load_paf(file_or_bytes):
           offset += 1
           byte3 = data[offset]
           offset += 1
-          x = (((byte1 & 0b111111) << 5) | (byte2 >> 3)) - 512
-          y = (((byte2 & 0b111) << 8) | byte3) - 512
+          x = (((byte1 & 0b111111) << 5) | (byte2 >> 3)) - 1024
+          y = (((byte2 & 0b111) << 8) | byte3) - 1024
 
         point = Point(last.x + x, last.y + y)
 
