@@ -129,9 +129,13 @@ result += struct.pack(">H", len(encoder.glyphs))
 result += struct.pack(">B", int(math.log2(args.scale)))
 result += struct.pack(">B", 0) # no flags to set
 
-print("  - glyphs")
+print("  - glyph dictionary")
 for codepoint, glyph in encoder.glyphs.items():
   result += encoder.get_packed_glyph(glyph)
+
+print("  - glyph contours")
+for codepoint, glyph in encoder.glyphs.items():
+  result += encoder.get_packed_glyph_contours(glyph)
 
 
 # write out the resulting paf font file in requested format

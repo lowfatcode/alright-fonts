@@ -180,6 +180,11 @@ class Encoder():
     return self.glyphs[codepoint]
 
   def get_packed_glyph(self, glyph):
-    result  = struct.pack(">HbbBBB" if self.scale <= 128 else ">HhhHHH", glyph.codepoint, glyph.bbox_x, glyph.bbox_y, glyph.bbox_w, glyph.bbox_h, glyph.advance)
-    result += pack_glyph_contours(glyph, self.scale)
-    return result
+    self.packed_glyph_contours[glyph.codepoint] = pack_glyph_contours(glyph, self.scale)
+    pack_format = ">HbbBBBH" if self.scale <= 128 else ">HhhHHHH"
+    return struct.pack(pack_format, glyph.codepoint, 
+      glyph.bbox_x, glyph.bbox_y, glyph.bbox_w, glyph.bbox_h, glyph.advance, 
+      len(self.packed_glyph_contours[glyph.codepoint]))
+
+  def get_packed_glyph_contours(self, glyph):
+    return self.packed_glyph_contours[glyph.codepoint]

@@ -85,12 +85,20 @@ The file `roboto-abcdefg.paf` is now ready to embed into your project.
 A Pretty Alright Font file consists of an 8-byte header, followed by a number
 of glyphs, followed by the contour data for the glyphs.
 
+Glyph metrics and contour coordinates are either one or two bytes values depending on the `scale` used when encoding the font. This saves a lot of space if we know the coordinates can never exceed the range of a signed byte.
+
+- `scale <= 7` - one byte metrics and coordinates (values between `-128..127`)
+- `scale >= 8` - two byte metrics and coordinates (values between `-32768..32767`) 
+
 |size (bytes)|description|
 |--:|---|
 |`8`|header|
-|variable|glyph entry 1
-|variable|glyph entry ..
-|variable|glyph entry n
+|`9` or `14`|glyph dictionary entry 1|
+|`9` or `14`|glyph dictionary entry ..|
+|`9` or `14`|glyph dictionary entry n|
+|variable|glyph 1 contours|
+|variable|glyph .. contours|
+|variable|glyph n contours|
 
 ### Header
 
@@ -133,15 +141,13 @@ The `flags` field is designed to allow the addition of features like these in th
 
 *There are currently no flags and this feature is reserved for future use.*
 
-### Glyphs
+### Glyph dictionary
 
-Following the header is the glyph data which contains entries for all of the glyphs sorted by their utf-8 codepoint or ascii character code.
+Following the header is the glyph dictionary which contains entries for all of the glyphs sorted by their utf-8 codepoint or ascii character code.
 
-Each entry includes the character codepoint, some basic metrics, and its contour data.
+Each entry includes the character codepoint, some basic metrics, and length of its contour data.
 
 > The inclusion of bounding box and advance metrics makes it very performant to calculate the bounds of a piece of text (there is no need to interrogate the contour data).
-
-Glyph metrics and contour coordinates are either one or two bytes values depending on the `scale` being used - if `scale <= 7` then the values are a single byte, otherwise they are two bytes.
 
 The glyphs are laid out one after another in the file:
 
@@ -153,11 +159,13 @@ The glyphs are laid out one after another in the file:
 |`1` or `2`|`bbox_w`|unsigned integer|width of bounding box|
 |`1` or `2`|`bbox_h`|unsigned integer|height of bounding box|
 |`1` or `2`|`advance`|unsigned integer|horizontal or vertical advance|
-|variable|`contours`|contour data|polylines that make the shape of the glyph|
+|`2`|`contour_size`|unsigned integer|length of contour data in bytes|
 
 ...and repeat for one entry per glyph.
 
 ### Glyph contour data
+
+Immediately after the glyph dictionary comes the glyph contour data. With each glyph in the same order they appear in the dictionary.
 
 A glyph can have multiple contours, each starts with a 16-bit value containing the number of points in the contour followed by a list of contour coordinates stored as `x`, `y` pairs.
 
