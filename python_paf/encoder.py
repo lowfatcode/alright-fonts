@@ -4,58 +4,15 @@ from . import Glyph, Point
 # contour encoding
 # ===========================================================================
 
-# packs the contour coordinates using the 1, 2, 3 byte method depending on
-# the delta values from one coordinate to the next
-def pack_glyph_contours(glyph):
+def pack_glyph_contours(glyph, scale):
   result = bytes()
   for contour in glyph.contours:      
     result += struct.pack(">H", len(contour))
-    last_point = None
     for point in contour:
-      delta = point.delta(last_point)   
-      delta.x = int(delta.x)    
-      delta.y = int(delta.y)
-      
-      if delta.y == 0 and delta.x >= -16 and delta.x < 15:
-        # 110xxxxx
-        # one byte pack dy == 0
-        dx = delta.x + 16 # offset by +16
-        byte1 = 0b11000000 | dx
-        result += struct.pack(">B", byte1)
-      elif delta.x == 0 and delta.y >= -16 and delta.y < 15:
-        # 111yyyyy
-        # one byte pack dx == 0
-        dy = delta.y + 16 # offset by +16
-        byte1 = 0b11100000 | dy
-        result += struct.pack(">B", byte1)
-      elif delta.x >= -4 and delta.x < 4 and delta.y >= -4 and delta.y < 4:
-        # 00xxxyyy
-        # one byte pack -4 <= x < 4 and -4 <= y < 4
-        dx = delta.x + 4 # offset by +4
-        dy = delta.y + 4 # offset by +4
-        byte1 = 0b00000000 | (dx << 3) | dy
-        result += struct.pack(">B", byte1)
-      elif delta.x >= -64 and delta.x < 64 and delta.y >= -64 and delta.y < 64:
-        # 10xxxxxx xyyyyyyy
-        # two byte pack -64 <= x < 64 and -64 <= y < 64
-        dx = delta.x + 64 # values offset by +64
-        dy = delta.y + 64 # values offset by +64
-        byte1 = 0b10000000 | (dx >> 1)
-        byte2 = ((dx << 7) & 0xff) | dy
-        result += struct.pack(">BB", byte1, byte2)
-      else:
-        # three byte pack (0b01xxxxxx xxxxxyyy yyyyyyyy)
-        dx = delta.x + 1024 # values offset by +1024
-        dy = delta.y + 1024 # values offset by +1024
-        byte1 = 0b01000000 | (dx >> 5)        
-        byte2 = ((dx << 3) & 0xff) | (dy >> 8)
-        byte3 = (dy & 0xff)
-        result += struct.pack(">BBB", byte1, byte2, byte3)
-      last_point = point
+      result += struct.pack(">bb" if scale <= 128 else ">hh", point.x, point.y)
   # end of contours marker
   result += struct.pack(">H", 0)
   return result      
-
 
 class Segment():
   def __init__(self, start):
@@ -112,7 +69,7 @@ class Segment():
     return points
   
 
-def load_glyph(face, codepoint, scale_factor, quality = 1):
+def load_glyph(face, codepoint, scale_factor, quality=1):
   # glyph doesn't exist in face
   if face.get_char_index(codepoint) == 0:
     return None
@@ -175,13 +132,12 @@ def load_glyph(face, codepoint, scale_factor, quality = 1):
       contour += segment.decompose(quality)
 
     # store the contour scaled up to -1024..1024
+    #contour = [p.round() for p in contour]
     glyph.contours.append(contour)
 
     # the start of the next contour is the end of this one
     start = end + 1
   
-    #points = [p.round() for p in points]
-
   return glyph
     
 class Encoder():
@@ -200,7 +156,8 @@ class Encoder():
       abs(self.bbox_l), abs(self.bbox_t), 
       abs(self.bbox_r), abs(self.bbox_b))
 
-    self.scale_factor = scale / normalising_scale_factor    
+    self.scale = scale
+    self.scale_factor = (scale - 1) / normalising_scale_factor    
 
     self.bbox_l *= self.scale_factor
     self.bbox_t *= self.scale_factor
@@ -220,12 +177,9 @@ class Encoder():
       if not glyph:
         return None
       self.glyphs[codepoint] = glyph
-      self.packed_glyph_contours[codepoint] = pack_glyph_contours(glyph)
-
     return self.glyphs[codepoint]
 
-  def get_packed_glyph_contours(self, glyph):
-    return self.packed_glyph_contours[glyph.codepoint]
-
-  def get_packed_glyph_dictionary_entry(self, glyph, contour_start):
-    return struct.pack(">HhhHHHL", glyph.codepoint, glyph.bbox_x, glyph.bbox_y, glyph.bbox_w, glyph.bbox_h, glyph.advance, contour_start)
+  def get_packed_glyph(self, glyph):
+    result  = struct.pack(">HbbBBB" if self.scale <= 128 else ">HhhHHH", glyph.codepoint, glyph.bbox_x, glyph.bbox_y, glyph.bbox_w, glyph.bbox_h, glyph.advance)
+    result += pack_glyph_contours(glyph, self.scale)
+    return result

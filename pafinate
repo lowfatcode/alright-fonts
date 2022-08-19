@@ -44,8 +44,8 @@ def print(*a, **kw):
 
 print("> loading font", args.font.name)
 quality_map = {
-  "low": 50,
-  "medium": 10,
+  "low": 25,
+  "medium": 5,
   "high": 1
 }
 
@@ -96,7 +96,6 @@ if args.corpus:
 # ===========================================================================
 
 print("> extracting {} glyphs".format(len(character_codepoints)))
-glyph_dictionary_entry_bytes = 16
 
 glyphs = {}
 contours = {}
@@ -105,13 +104,12 @@ for codepoint in character_codepoints:
   glyph = encoder.get_glyph(codepoint)
 
   if glyph:
-    print("  \\u{:04} {} : {:>2} contours / {:>3} points ({:>4}bytes)".format(
+    print("  \\u{:04} {} : {:>2} contours / {:>3} points".format(
       codepoint, 
       "'" + chr(codepoint) + "'", 
       len(glyph.contours), 
-      sum([len(c) for c in glyph.contours]), 
-      len(encoder.get_packed_glyph_contours(glyph)) + glyph_dictionary_entry_bytes)
-    )
+      sum([len(c) for c in glyph.contours])
+    ))
     printable_count += 1
   else:
     print("  \\u{:04} missing or not printable, skipping".format(codepoint))
@@ -131,17 +129,9 @@ result += struct.pack(">H", len(encoder.glyphs))
 result += struct.pack(">B", int(math.log2(args.scale)))
 result += struct.pack(">B", 0) # no flags to set
 
-contour_start_offset  = 4 + 4 # header length ('paff' + count)
-contour_start_offset += glyph_dictionary_entry_bytes * printable_count # glyph dictionary length
-print("  - glyph dictionary")
+print("  - glyphs")
 for codepoint, glyph in encoder.glyphs.items():
-  result += encoder.get_packed_glyph_dictionary_entry(glyph, contour_start_offset)
-  contour_start_offset += len(encoder.get_packed_glyph_contours(glyph))
-
-# write glyph contours
-print("  - glyph contours")
-for codepoint, glyph in encoder.glyphs.items():
-  result += encoder.get_packed_glyph_contours(glyph)
+  result += encoder.get_packed_glyph(glyph)
 
 
 # write out the resulting paf font file in requested format

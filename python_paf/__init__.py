@@ -1,13 +1,17 @@
 import math
 
 class Point():
-  def __init__(self, x, y=None):
-    if isinstance(x, tuple):
-      self.x = x[0]
-      self.y = x[1]
+  def __init__(self, x=None, y=None):
+    if x != None:
+      if isinstance(x, tuple):
+        self.x = x[0]
+        self.y = x[1]
+      else:
+        self.x = x
+        self.y = y
     else:
-      self.x = x
-      self.y = y
+      self.x = 0
+      self.y = 0
     
   def scale(self, scale_x, scale_y=None):
     if not scale_y:
