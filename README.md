@@ -1,4 +1,4 @@
-![paf-logo](https://user-images.githubusercontent.com/297930/184892098-de607372-c4a0-4abe-bc27-8883d21eaef3.png)
+![paf-logo](https://user-images.githubusercontent.com/297930/186649608-6ee444e5-6abd-40ec-a570-8aa75f479bcc.png)
 
 # The font format designed for embedded and low resource platforms.
 
