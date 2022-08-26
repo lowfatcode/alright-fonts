@@ -1,12 +1,12 @@
-#include "paf.hpp"
+#include "pretty_alright_fonts.hpp"
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 
 using namespace paf;
 
-constexpr uint WIDTH = 512;
-constexpr uint HEIGHT = 512;
+constexpr int WIDTH = 512;
+constexpr int HEIGHT = 512;
 
 typedef uint32_t color;
 color image[WIDTH][HEIGHT];

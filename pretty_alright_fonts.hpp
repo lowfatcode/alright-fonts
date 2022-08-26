@@ -139,39 +139,10 @@ namespace paf {
     text_metrics_t(face_t &face, int size) : face(face), size(size) {}
   };
 
-  enum bits_per_pixel_t {
-    one   = 1,
-    two   = 2,
-    four  = 4,
-    eight = 8
-  };
-
-  struct render_tile_t {
-    rect_t bounds;
-    bits_per_pixel_t bpp;
-    void *p;
-  };
 
   /*
     global properties
   */
-
-  // function called when renderer has prepared a tile of data for drawing
-  // client code must provide an implementation for this function
-  typedef void (*render_tile_callback_t)(const render_tile_t &rt);
-  static render_tile_callback_t rtc;
-
-  // clipping rectangle for rendering, usually the full bounds of the 
-  // screen 
-  static rect_t clip;
-
-  /*
-    initialisation
-  */
-  void init(render_tile_callback_t _rtc, rect_t _clip) {
-    rtc = _rtc;
-    clip = _clip;
-  }
 
   /*
     helper functions
@@ -189,121 +160,12 @@ namespace paf {
     p.y = (p.y * tm.size) >> (tm.face.scale - tm.antialiasing);
   }
 
-  // dy step (returns 1, 0, or -1 if the supplied value is > 0, == 0, < 0)
-  inline __attribute__((always_inline)) int dy_step(int dy) {
-    // assumes 32-bit int/unsigned
-    return ((unsigned) - dy >> 31) - ((unsigned)dy >> 31);
-  }
-
   /* 
     render functions
   */
 
   void render_character(text_metrics_t &tm, uint16_t codepoint, point_t point) {
-/*    // tile rendering buffer
-    static uint32_t tile_buffer[32];
 
-    // polygon node list buffer - 4kB
-    // handles at most 32 line intersections - is this enough for cjk/emoji?
-    static int32_t nodes[32][32];
-    static uint32_t node_counts[32];
-
-    // if character not in face then draw nothing
-    if(tm.face.glyphs.find(codepoint) == tm.face.glyphs.end()) {
-      return;
-    }
-
-    // get the glyph contours and point size
-    uint8_t ps = tm.face.scale <= 7 ? 2 : 4;
-    uint8_t *p = tm.face.glyphs[codepoint].contours;
-
-    // reset the node counts and tile buffer
-    memset(node_counts, 0, sizeof(node_counts));
-    memset(tile_buffer, 0, sizeof(tile_buffer));
-    
-    while(true) {
-      // get point count for this contour
-      uint16_t c = *p++ << 8; c |= *p++;      
-      if(c == 0) {break;} // empty contour means end of contours
-
-
-      // start with the last point of the contour to close the loop
-      point_t start = contour_point(p + ((c - 1) * ps), ps);  
-      scale_point(start, tm);    
-//      printf("> contour start - point count %d\n", c);
-//      printf("  - %d, %d\n", start.x, start.y);
-
-      // for each point in contour
-      for(auto i = 0; i < c; i++) {
-        point_t end = contour_point(p, ps);
-        scale_point(end, tm);
-        printf("  - %d, %d\n", end.x, end.y);
-        p += ps;
-
-        // if line segment is purely horizontal we can skip it, adjoining
-        // edges will define spans that cover the same area
-        if(start.y == end.y && start.y >= 0 && start.y < 32) {
-          continue;
-        }
-
-        int dy = end.y - start.y;
-        int x = start.x << 8;
-        int y = start.y;
-
-        // step_y is 1, 0, or -1 (when dy is >0, ==0, <0 respectively)
-        int step_y = dy < 0 ? -1 : 1;
-        int step_x = ((end.x - start.x) << 8) / abs(dy);
-        while(y != end.y) {
-          if(y >= 0 && y < 32) {
-            int cx = x >> 8;
-            cx = cx < 0 ? 0 : cx > 31 ? 31 : cx;
-            nodes[y][node_counts[y]++] = cx;
-//            printf("    : add node %d, %d\n", y, x >> 8);
-          }
-          y += step_y;
-          x += step_x;
-        }
-
-        start = end;
-      }
-
-//      printf("here");
-
-      // sort the nodes for each scanline
-      for(auto y = 0; y < 32; y++) {
-        std::sort(nodes[y], nodes[y] + node_counts[y]);
-
-
-        // render the spans for this line
-        for (uint32_t i = 0; i < node_counts[y]; i += 2) {
-          uint32_t start = nodes[y][i];
-          uint32_t end = nodes[y][i + 1];
-          //printf("span on %d from %d to %d\n", y, start, end);
-
-          uint32_t span_width = end - start;          
-          if(span_width == 0) {
-            continue;
-          }
-
-          // create a mask with `width` bits set to 1
-          uint32_t span_mask = ((1 << span_width) - 1);          
-          // write the mask into the tile buffer at `start` position
-          tile_buffer[y] |= span_mask << (32 - start - span_width);
-        }
-
-        for(auto i = 0; i < 32; i++) {
-          printf(((1 << (31 - i)) & tile_buffer[y]) != 0 ? "O" : " ");
-        }
-        printf("\n");
-      }
-    }
-
-
-    render_tile_t rt;
-    rt.bounds = rect_t(0, 0, 128, 128);
-    rt.bpp = one;
-    rt.p = tile_buffer;
-    rtc(rt);*/
   }
 
   void render(const text_metrics_t &tm, rect_t bounds) {
@@ -394,7 +256,7 @@ namespace paf {
 
       this->glyphs[g.codepoint] = g;
     }
-    
+
     return true;
   }
 
