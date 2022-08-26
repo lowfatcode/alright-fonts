@@ -7,7 +7,7 @@
 # vector fonts.
 
 import sys, argparse, struct, math, builtins
-from python_paf import Glyph, Point, Encoder
+from python_pretty_alright_fonts import Glyph, Point, Encoder
 
 
 # parse command line arguments

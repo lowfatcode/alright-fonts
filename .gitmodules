@@ -1,0 +1,3 @@
+[submodule "pretty-poly"]
+	path = pretty-poly
+	url = https://github.com/lowfatcode/pretty-poly.git

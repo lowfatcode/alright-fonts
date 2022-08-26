@@ -49,13 +49,9 @@ void line(int32_t x1, int32_t y1, int32_t x2, int32_t y2, color c) {
   }
 }
 
-void render_tile_callback(const render_tile_t &rt) {
-
-}
-
 int main() {
   std::string font_path = "../sample-fonts/Roboto/Roboto-Black.paf";
-
+/*
   // initialise pretty alright fonts
   init(render_tile_callback, rect_t(0, 0, WIDTH, HEIGHT));
 
@@ -68,7 +64,7 @@ int main() {
   line(10, 10, 100, 50, pen(255, 0, 0));
 
   render_character(tm, int('i'), point_t(10, 10));
-
+*/
   // output the image
   stbi_write_png("out.png", WIDTH, HEIGHT, 4, image, WIDTH * 4);
 
