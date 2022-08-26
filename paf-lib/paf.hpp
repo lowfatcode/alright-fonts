@@ -1,4 +1,5 @@
 #include <cstdint>
+#include <algorithm>
 #include <math.h>
 #include <string.h>
 #include <fstream>
@@ -101,8 +102,8 @@ namespace paf {
     face_t(ifstream &ifs) {load(ifs);}
     face_t(string path) {load(path);}
     
-    void load(ifstream &ifs);
-    void load(string path);
+    bool load(ifstream &ifs);
+    bool load(string path);
 
     ~face_t() {
       delete contours;
@@ -177,19 +178,19 @@ namespace paf {
   */
 
   // returns a point from a contour based on the point size specified
-  __attribute__((always_inline)) point_t contour_point(uint8_t *p, uint8_t ps) {    
+  inline __attribute__((always_inline)) point_t contour_point(uint8_t *p, uint8_t ps) {    
     if(ps == 2) {return point_t(p[0], p[1]);}
     return point_t(p[0] << 8 | p[1], p[2] << 8 | p[3]);
   }
 
   // apply face, supersampling, and target size scaling to point
-  __attribute__((always_inline)) void scale_point(point_t &p, const text_metrics_t &tm) {
+  inline __attribute__((always_inline)) void scale_point(point_t &p, const text_metrics_t &tm) {
     p.x = (p.x * tm.size) >> (tm.face.scale - tm.antialiasing);
     p.y = (p.y * tm.size) >> (tm.face.scale - tm.antialiasing);
   }
 
   // dy step (returns 1, 0, or -1 if the supplied value is > 0, == 0, < 0)
-  __attribute__((always_inline)) int dy_step(int dy) {
+  inline __attribute__((always_inline)) int dy_step(int dy) {
     // assumes 32-bit int/unsigned
     return ((unsigned) - dy >> 31) - ((unsigned)dy >> 31);
   }
@@ -199,7 +200,7 @@ namespace paf {
   */
 
   void render_character(text_metrics_t &tm, uint16_t codepoint, point_t point) {
-    // tile rendering buffer
+/*    // tile rendering buffer
     static uint32_t tile_buffer[32];
 
     // polygon node list buffer - 4kB
@@ -229,8 +230,8 @@ namespace paf {
       // start with the last point of the contour to close the loop
       point_t start = contour_point(p + ((c - 1) * ps), ps);  
       scale_point(start, tm);    
-      printf("> contour start - point count %d\n", c);
-      printf("  - %d, %d\n", start.x, start.y);
+//      printf("> contour start - point count %d\n", c);
+//      printf("  - %d, %d\n", start.x, start.y);
 
       // for each point in contour
       for(auto i = 0; i < c; i++) {
@@ -257,7 +258,7 @@ namespace paf {
             int cx = x >> 8;
             cx = cx < 0 ? 0 : cx > 31 ? 31 : cx;
             nodes[y][node_counts[y]++] = cx;
-            printf("    : add node %d, %d\n", y, x >> 8);
+//            printf("    : add node %d, %d\n", y, x >> 8);
           }
           y += step_y;
           x += step_x;
@@ -266,25 +267,15 @@ namespace paf {
         start = end;
       }
 
-      printf("here");
+//      printf("here");
 
       // sort the nodes for each scanline
       for(auto y = 0; y < 32; y++) {
         std::sort(nodes[y], nodes[y] + node_counts[y]);
-/*        int32_t *sln = nodes[y];
-        
-        uint32_t i = 0;
-        while (i < node_counts[y] - 1) {
-          if (sln[i] > sln[i + 1]) {
-            int32_t s = sln[i]; sln[i] = sln[i + 1]; sln[i + 1] = s;
-            if (i) i--;
-          } else {
-            i++;
-          }
-        }*/
+
 
         // render the spans for this line
-        for (auto i = 0; i < node_counts[y]; i += 2) {
+        for (uint32_t i = 0; i < node_counts[y]; i += 2) {
           uint32_t start = nodes[y][i];
           uint32_t end = nodes[y][i + 1];
           //printf("span on %d from %d to %d\n", y, start, end);
@@ -312,7 +303,7 @@ namespace paf {
     rt.bounds = rect_t(0, 0, 128, 128);
     rt.bpp = one;
     rt.p = tile_buffer;
-    rtc(rt);
+    rtc(rt);*/
   }
 
   void render(const text_metrics_t &tm, rect_t bounds) {
@@ -325,40 +316,14 @@ namespace paf {
   /*
     load functions
   */
-  /*
-  void load(face_t &face, const char *p) {
-    // check header magic bytes are present
-    if(memcmp(p, "paf!", 4) != 0) {
-      throw runtime_error(".paf data doesn't start with magic marker");
-    }
-
-    face.glyph_count  = *p++ << 8;
-    face.glyph_count += *p++;
-
-    // extract and check scale value
-    face.scale = *p++;
-    if(face.scale > 10) {
-      throw runtime_error("scale out of bounds");
-    }
-
-    // extract flags and ensure none set
-    face.flags = *p++;
-    if(face.flags != 0) {
-      throw runtime_error("unknown flags set");
-    }
-
-    face.pdict = (glyph_t *)(p);
-    p += (face.glyph_count) * sizeof(glyph_t);
-    face.pcontour = (uint8_t *)p;
-  }*/
-
-  void face_t::load(ifstream &ifs) {
+  bool face_t::load(ifstream &ifs) {
     char marker[4];
     ifs.read(marker, sizeof(marker));
 
     // check header magic bytes are present
     if(memcmp(marker, "paf!", 4) != 0) {
-      throw runtime_error(".paf data doesn't start with magic marker");
+      // doesn't start with magic marker
+      return false;
     }
 
     // number of glyphs embedded in font file
@@ -367,13 +332,15 @@ namespace paf {
     // extract and check scale value
     this->scale = ru8(ifs);
     if(this->scale > 10) {
-      throw runtime_error("scale out of bounds");
+      // scale out of bounds
+      return false;
     }
 
     // extract flags and ensure none set
     this->flags = ru8(ifs);
     if(this->flags != 0) {
-      throw runtime_error("unknown flags set");
+      // unknown flags set
+      return false;
     }
 
     // extract glyph dictionary
@@ -405,7 +372,8 @@ namespace paf {
       printf("- g.advance %d\n", g.advance);*/
 
       if(ifs.fail()) {
-        throw runtime_error("could not read glyph dictionary entry");
+        // could not read glyph dictionary entry
+        return false;
       }
 
       // allocate space for the contour data and read it from the font file
@@ -420,16 +388,19 @@ namespace paf {
       contour_data_offset += contour_data_length;
 
       if(ifs.fail()) {
-        throw runtime_error("could not read glyph contour data");
+        // could not read glyph contour data
+        return false;
       }
 
       this->glyphs[g.codepoint] = g;
     }
+    
+    return true;
   }
 
-  void face_t::load(string path) {
+  bool face_t::load(string path) {
     ifstream ifs(path, ios::binary);
-    load(ifs);
+    return load(ifs);
   }
 
 }
