@@ -39,7 +39,7 @@ Alright Fonts includes:
 
 - `afinate` an extraction and encoding tool to create Alright Font (.af) files 
 - `python_alright_fonts` a Python library for encoding and loading Alright Fonts
-- `alright-fonts-lib` a reference C++ library implementation
+- `alright-fonts.hpp` a reference C++ library implementation
 
 The repository also includes some examples:
 
