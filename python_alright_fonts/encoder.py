@@ -4,12 +4,12 @@ from . import Glyph, Point
 # contour encoding
 # ===========================================================================
 
-def pack_glyph_contours(glyph, scale):
+def pack_glyph_contours(glyph):
   result = bytes()
   for contour in glyph.contours:      
     result += struct.pack(">H", len(contour))
     for point in contour:
-      result += struct.pack(">bb" if scale <= 128 else ">hh", point.x, point.y)
+      result += struct.pack(">bb", point.x, point.y)
   # end of contours marker
   result += struct.pack(">H", 0)
   return result      
@@ -131,8 +131,7 @@ def load_glyph(face, codepoint, scale_factor, quality=1):
       # we're building
       contour += segment.decompose(quality)
 
-    # store the contour scaled up to -1024..1024
-    #contour = [p.round() for p in contour]
+    # store the contour
     glyph.contours.append(contour)
 
     # the start of the next contour is the end of this one
@@ -141,7 +140,7 @@ def load_glyph(face, codepoint, scale_factor, quality=1):
   return glyph
     
 class Encoder():
-  def __init__(self, font, scale, quality = 1):
+  def __init__(self, font, quality = 1):
     self.face = freetype.Face(font)
     self.bbox_l = self.face.bbox.xMin
     self.bbox_t = self.face.bbox.yMin
@@ -156,8 +155,7 @@ class Encoder():
       abs(self.bbox_l), abs(self.bbox_t), 
       abs(self.bbox_r), abs(self.bbox_b))
 
-    self.scale = scale
-    self.scale_factor = (scale - 1) / normalising_scale_factor    
+    self.scale_factor = 127 / normalising_scale_factor    
 
     self.bbox_l *= self.scale_factor
     self.bbox_t *= self.scale_factor
@@ -180,8 +178,8 @@ class Encoder():
     return self.glyphs[codepoint]
 
   def get_packed_glyph(self, glyph):
-    self.packed_glyph_contours[glyph.codepoint] = pack_glyph_contours(glyph, self.scale)
-    pack_format = ">HbbBBBH" if self.scale <= 128 else ">HhhHHHH"
+    self.packed_glyph_contours[glyph.codepoint] = pack_glyph_contours(glyph)
+    pack_format = ">HbbBBBH"
     return struct.pack(pack_format, glyph.codepoint, 
       glyph.bbox_x, glyph.bbox_y, glyph.bbox_w, glyph.bbox_h, glyph.advance, 
       len(self.packed_glyph_contours[glyph.codepoint]))

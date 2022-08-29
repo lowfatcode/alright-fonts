@@ -1,7 +1,7 @@
 import sys, struct
 from . import Glyph, Point, Face
 
-def extract_contours(data, scale):
+def extract_contours(data):
   contours = []
 
   offset = 0
@@ -16,12 +16,11 @@ def extract_contours(data, scale):
     # load points of contour
     for j in range(0, point_count):
       point = Point()           
-      point_size = 2 if scale <= 7 else 4
       point.x, point.y = struct.unpack(
-        ">bb" if scale <= 7 else ">hh", 
-        data[offset + 0:offset + point_size]
+        ">bb", 
+        data[offset + 0:offset + 2]
       )
-      offset += point_size
+      offset += 2
       contour.append(point)
 
     contours.append(contour)
@@ -47,10 +46,9 @@ def load_font(file_or_name_or_bytes):
     sys.exit()
 
   glyph_count = int.from_bytes(data[4:6], byteorder="big")
-  scale = int.from_bytes(data[6:7], byteorder="big")
-  flags = int.from_bytes(data[7:8], byteorder="big")
+  flags = int.from_bytes(data[6:8], byteorder="big")
   
-  glyph_entry_length = 9 if scale <= 7 else 14  
+  glyph_entry_length = 9
 
   # contours start at end of glyph dictionary
   contour_offset = 8 + (glyph_count * glyph_entry_length)
@@ -61,13 +59,12 @@ def load_font(file_or_name_or_bytes):
     glyph.codepoint, glyph.bbox_x, glyph.bbox_y, glyph.bbox_w, \
       glyph.bbox_h, glyph.advance, contour_data_length = \
       struct.unpack(
-        ">HbbBBBH" if scale <= 7 else ">HhhHHHH", 
+        ">HbbBBBH", 
         data[glyph_entry_offset:glyph_entry_offset + glyph_entry_length]
       )
 
     glyph.contours = extract_contours(
-      data[contour_offset:contour_offset + contour_data_length],
-      scale
+      data[contour_offset:contour_offset + contour_data_length]
     )
     contour_offset += contour_data_length
 

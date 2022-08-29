@@ -64,7 +64,6 @@ Font data can be output either as a binary file or as source files for C(++) and
   - `af`: generates a binary font file for embedding with your linker or loading at runtime from a filesystem.
   - `c` generates a C(++) code file containing a const array of font data
   - `python` generates a Python code file containing an array of font data
-- `--scale`: the scale to apply to metrics and coordinates, must be a power of 2. (default: `128`)
 - `--quality`: the quality of decomposed bezier curves, either `low`, `medium`, or `high` (default: `medium` - affects file size)
   
 The list of characters to include can be specified in three ways:
@@ -85,17 +84,12 @@ The file `roboto-abcdefg.af` is now ready to embed into your project.
 
 An Alright Fonts file consists of an 8-byte header, followed by a number of glyphs, followed by the contour data for the glyphs.
 
-Glyph metrics and contour coordinates are either one or two bytes values depending on the `scale` used when encoding the font. This saves a lot of space if we know the coordinates can never exceed the range of a signed byte.
-
-- `scale <= 7` - one byte metrics and coordinates (values between `-128..127`)
-- `scale >= 8` - two byte metrics and coordinates (values between `-32768..32767`) 
-
 |size (bytes)|description|
 |--:|---|
 |`8`|header|
-|`9` or `14`|glyph dictionary entry 1|
-|`9` or `14`|glyph dictionary entry ..|
-|`9` or `14`|glyph dictionary entry n|
+|`9`|glyph dictionary entry 1|
+|`9`|glyph dictionary entry ..|
+|`9`|glyph dictionary entry n|
 |variable|glyph 1 contours|
 |variable|glyph .. contours|
 |variable|glyph n contours|
@@ -108,20 +102,17 @@ The very basic header includes a magic marker for identification, the number of 
 |--:|---|---|---|
 |`4`|`"af!?"`|bytes|magic marker bytes|
 |`2`|`count`|unsigned 16-bit|number of glyphs in file|
-|`1`|`scale`|unsigned 8-bit|log2 of scale factor for coordinates (e.g. `7` if the scaling factor is `128`)|
-|`1`|`flags`|unsigned 8-bit|flags byte (reserved for future use)|
+|`2`|`flags`|unsigned 16-bit|flags (reserved for future use)|
 
 #### Coordinate normalisation and scaling
 
-All coordinates of the glyph (bounding boxes, advances, and contour points) are divided by the largest dimension of the bounding box that contains all glyphs - effectively normalising them to a common `-1..1 x -1..1` box.
+All coordinates of the glyph (bounding boxes, advances, and contour points) are divided by the largest dimension of the bounding box that contains all glyphs - effectively normalising them to a common `-1..1 x -1..1` box. The coordinates are then multiplied by `127` scaling them up to the range `-128` to `127`.
 
-> Throughout the documentation we will assume that `scale` is `7` and therefore the coordinate range is `-128..127`. Depending on your needs you may use smaller or larger scales to trade off quality for size.
+This scale was chosen for a number of reasons:
 
-The coordinates are then scaled up by multiplying them by 2 to the power of `scale`. The default scale value is `7` allowing for coordinates ranging from `-128` to `127` - this value was chosen for a number of reasons:
-
-- highest quality where contour coordinates encode as two bytes reducing file size
-- provides good enough resolution to retain fine detail
-- avoid expensive divide when scaling during rendering (`2^n` allows a cheap bitshift instead)
+- contour coordinates encode as single bytes reducing file size
+- provides good enough resolution to retain fine detail even on complex glyphs
+- avoid expensive divide when scaling during rendering: `(size_px * coordinate) >> 8`
 
 #### Flags
 
@@ -134,6 +125,7 @@ It's also likely that we may want, in future, to add a feature or two:
 - excluding glyph bounding boxes 
 - including glyph pair kerning data
 - allowing 4-byte character codepoints
+- allow a finer scale for coordinates (i.e. `-65536..65535`)
 - alternative packing methods for contour data
 - better support for vertical or LTR languages
 
@@ -154,11 +146,11 @@ The glyphs are laid out one after another in the file:
 |size (bytes)|name|type|notes|
 |--:|---|---|---|
 |`2`|`codepoint`|unsigned integer|utf-8 codepoint or ascii character code|
-|`1` or `2`|`bbox_x`|signed integer|left edge of bounding box|
-|`1` or `2`|`bbox_y`|signed integer|top edge of bounding box|
-|`1` or `2`|`bbox_w`|unsigned integer|width of bounding box|
-|`1` or `2`|`bbox_h`|unsigned integer|height of bounding box|
-|`1` or `2`|`advance`|unsigned integer|horizontal or vertical advance|
+|`1`|`bbox_x`|signed integer|left edge of bounding box|
+|`1`|`bbox_y`|signed integer|top edge of bounding box|
+|`1`|`bbox_w`|unsigned integer|width of bounding box|
+|`1`|`bbox_h`|unsigned integer|height of bounding box|
+|`1`|`advance`|unsigned integer|horizontal or vertical advance|
 |`2`|`contour_size`|unsigned integer|length of contour data in bytes|
 
 ...and repeat for one entry per glyph.
@@ -174,11 +166,11 @@ To denote the end of the contours of a glyph there will be a 16-bit zero value -
 |size (bytes)|name|type|notes|
 |--:|---|---|---|
 |`2`|`count`|unsigned 16-bit|count of coordinates in first contour|
-|`1`, or `2`|`point 1 x`|signed integer|first point x component|
-|`1`, or `2`|`point 1 y`|signed integer|first point y component|
+|`1`|`point 1 x`|signed integer|first point x component|
+|`1`|`point 1 y`|signed integer|first point y component|
 ||..|..|..|
-|`1`, or `2`|`point n x`|signed integer|nth point x component|
-|`1`, or `2`|`point n y`|signed integer|nth  point y component|
+|`1`|`point n x`|signed integer|nth point x component|
+|`1`|`point n y`|signed integer|nth  point y component|
 |`2`|`count`|unsigned 16-bit|count of coordinates in second contour|
 |..|..|..|..|
 |`2`|`count`|unsigned 16-bit|0 value denotes end of contours for glyph|
@@ -190,7 +182,7 @@ To denote the end of the contours of a glyph there will be a 16-bit zero value -
 Here three Alright Fonts files have been generated containing the full set of printable ASCII characters. The font used was Roboto Black and the command line parameters to `afinate` were:
 
 ```bash
-./afinate --font fonts/Roboto-Black.ttf --scale 128 --quality [low|medium|high]
+./afinate --font fonts/Roboto-Black.ttf --quality [low|medium|high]
 ```
 
 |Low|Medium|High|
@@ -205,5 +197,5 @@ The differences are easier to see when viewing the images at their original size
 You can pipe the output of `afinate` directly into the `render-demo` example script to product a swatch image.
 
 ```bash
-./afinate --font fonts/Roboto-Black.ttf --scale 128 --quality high - | ./render-demo
+./afinate --font fonts/Roboto-Black.ttf --quality high - | ./render-demo
 ```
