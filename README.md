@@ -1,4 +1,5 @@
-![paf-logo](https://user-images.githubusercontent.com/297930/186649608-6ee444e5-6abd-40ec-a570-8aa75f479bcc.png)
+<img src="logo.png" alt="Alright Fonts logo" width="300px">
+
 
 # The font format designed for embedded and low resource platforms.
 
@@ -12,11 +13,11 @@ It is now viable to render filled, transformed, anti-aliased, and scalable chara
 
 There is, however, still a sticking point. Existing font formats are complicated beasts that define shapes as collections of curves and control points, include entire state machines for pixel hinting, have character pair specific kerning tables, and digital rights management for.. well, yeah.
 
-> The name Pretty Alright Fonts was inspired by the QOI (“Quite OK Image Format”) project. Find out more here: https://qoiformat.org/
+> The name Alright Fonts was inspired by the QOI (“Quite OK Image Format”) project. Find out more here: https://qoiformat.org/
 
-## Pretty Alright Fonts are here to save the day!
+## Alright Fonts are here to save the day!
 
-Pretty Alright Fonts drops the extra bells and whistles and decomposes curves into small straight line segments.
+Alright Fonts drops the extra bells and whistles and decomposes curves into small straight line segments.
 
 The format is simple to parse, can be tuned for quality, size, speed, or a combination of all three, contains helper metrics for quickly measuring text, and produces surprisingly good results.
 
@@ -34,11 +35,11 @@ Features:
 - create custom font packs containing only the characters that are needed
 - decomposes all glyph contours (strokes) into simple polylines for easy rendering
 
-Pretty Alright Fonts includes:
+Alright Fonts includes:
 
-- `pafinate` an extraction and encoding tool
-- `python_paf` a Python library for encoding and loading Pretty Alright Fonts
-- `paf-lib` a reference C++ library implementation
+- `afinate` an extraction and encoding tool to create Alright Font (.af) files 
+- `python_alright_fonts` a Python library for encoding and loading Alright Fonts
+- `alright-fonts-lib` a reference C++ library implementation
 
 The repository also includes some examples:
 
@@ -46,12 +47,12 @@ The repository also includes some examples:
 
 > The C++reference renderer should be straightforward to embed in any C++ project - alternatively it can be used as a guide for implementing your own renderer.
 
-## Creating a font pack with the `pafinate` tool
+## Creating a font pack with the `afinate` tool
 
-The `pafinate` tool creates new font packs from a TTF or OTF font.
+The `afinate` tool creates new font packs from a TTF or OTF font.
 
 ```bash
-usage: pafinate [-h] [--characters CHARACTERS] --font FONTFILE OUTFILE
+usage: afinate [-h] [--characters CHARACTERS] --font FONTFILE OUTFILE
 ```
 
 - `--font FILE`: specify the font to use
@@ -59,8 +60,8 @@ usage: pafinate [-h] [--characters CHARACTERS] --font FONTFILE OUTFILE
 
 Font data can be output either as a binary file or as source files for C(++) and Python.
 
-- `--format`: output format, either `paf` (default), `c`, or `python`
-  - `paf`: generates a binary font file for embedding with your linker or loading at runtime from a filesystem.
+- `--format`: output format, either `af` (default), `c`, or `python`
+  - `af`: generates a binary font file for embedding with your linker or loading at runtime from a filesystem.
   - `c` generates a C(++) code file containing a const array of font data
   - `python` generates a Python code file containing an array of font data
 - `--scale`: the scale to apply to metrics and coordinates, must be a power of 2. (default: `128`)
@@ -75,15 +76,14 @@ The list of characters to include can be specified in three ways:
 For example:
 
 ```bash
-./pafinate --characters 'abcdefg' --font 'fonts/Roboto-Black.ttf' roboto-abcdefg.paf
+./afinate --characters 'abcdefg' --font 'fonts/Roboto-Black.ttf' roboto-abcdefg.af
 ```
 
-The file `roboto-abcdefg.paf` is now ready to embed into your project.
+The file `roboto-abcdefg.af` is now ready to embed into your project.
 
-## The Pretty Alright Fonts file format
+## The Alright Fonts file format
 
-A Pretty Alright Font file consists of an 8-byte header, followed by a number
-of glyphs, followed by the contour data for the glyphs.
+An Alright Fonts file consists of an 8-byte header, followed by a number of glyphs, followed by the contour data for the glyphs.
 
 Glyph metrics and contour coordinates are either one or two bytes values depending on the `scale` used when encoding the font. This saves a lot of space if we know the coordinates can never exceed the range of a signed byte.
 
@@ -106,7 +106,7 @@ The very basic header includes a magic marker for identification, the number of 
 
 |size (bytes)|name|type|notes|
 |--:|---|---|---|
-|`4`|`"paf!"`|bytes|magic marker bytes|
+|`4`|`"af!?"`|bytes|magic marker bytes|
 |`2`|`count`|unsigned 16-bit|number of glyphs in file|
 |`1`|`scale`|unsigned 8-bit|log2 of scale factor for coordinates (e.g. `7` if the scaling factor is `128`)|
 |`1`|`flags`|unsigned 8-bit|flags byte (reserved for future use)|
@@ -187,10 +187,10 @@ To denote the end of the contours of a glyph there will be a 16-bit zero value -
 
 ### Quality comparison
 
-Here three Pretty Alright Font files have been generated containing the full set of printable ASCII characters. The font used was Roboto Black and the command line parameters to `pafinate` were:
+Here three Alright Fonts files have been generated containing the full set of printable ASCII characters. The font used was Roboto Black and the command line parameters to `afinate` were:
 
 ```bash
-./pafinate --font fonts/Roboto-Black.ttf --scale 128 --quality [low|medium|high]
+./afinate --font fonts/Roboto-Black.ttf --scale 128 --quality [low|medium|high]
 ```
 
 |Low|Medium|High|
@@ -202,8 +202,8 @@ The differences are easier to see when viewing the images at their original size
 
 ### Python `render-demo`
 
-You can pipe the output of `pafinate` directly into the `render-demo` example script to product a swatch image.
+You can pipe the output of `afinate` directly into the `render-demo` example script to product a swatch image.
 
 ```bash
-./pafinate --font fonts/Roboto-Black.ttf --scale 128 --quality high - | ./render-demo
+./afinate --font fonts/Roboto-Black.ttf --scale 128 --quality high - | ./render-demo
 ```

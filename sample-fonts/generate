@@ -12,8 +12,8 @@ for path in $(find ../google-fonts/* -maxdepth 0 -type d); do
 
     if [ "$extension" == "ttf" ] || [ "$extension" == "otf" ]
     then
-      echo "  - convert $file into .paf"
-      ../pafinate --quiet --font $file $basepath/$filename.paf
+      echo "  - convert $file into .af"
+      ../afinate --quiet --font $file $basepath/$filename.af
     else
       cp $file $basepath/$filename
       echo "  - copy $file"

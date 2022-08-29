@@ -1,0 +1,93 @@
+#!/usr/bin/env python3
+
+# renders a demo swatch using the font provided
+# 
+# either pass the font file in with the `--font` argument or pipe the file to stdin
+#
+# for example:
+#
+#   ./examples/python/render-demo --font out/roboto-black.af
+#   ./afinate --font fonts/Roboto-Black.tff --quality medium - | examples/python/render-demo
+
+
+# insert top level into python module search path so python_alright_fonts import works
+# what's the pythonic way to achieve this kind of structure of a repo with
+# a module and an isolated `examples` folder?
+import sys, os, argparse
+path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
+sys.path.insert(1, path)
+
+from python_alright_fonts import Glyph, Point, Face, load_font
+
+font_low = load_font("fonts/Roboto-Black-Low.af")
+font_medium = load_font("fonts/Roboto-Black-Medium.af")
+font_high = load_font("fonts/Roboto-Black-High.af")
+
+from PIL import Image, ImageDraw
+
+def draw_glyph(glyph, position, scale, colour=(255, 255, 255)):    
+  point_count = 0
+  for contour in glyph.contours:
+    for i in range(0, len(contour)):
+      p1 = contour[i].scale(scale)
+      p2 = (contour[i + 1] if i < len(contour) - 1 else contour[0]).scale(scale)
+
+      p1 = (p1.x + position.x, p1.y + position.y)
+      p2 = (p2.x + position.x, p2.y + position.y)
+
+      canvas.line((p1, p2), fill=colour)
+      point_count += 1
+
+      f = int((i / len(contour)) * 255)
+      #canvas.ellipse([p1[0] - 1, p1[1] - 1, p1[0] + 1, p1[1] + 1], fill=(f, 255 - f, 0, 255))
+
+def text(font, text, position, size, color=(255, 255, 255)):
+  caret = Point(position.x, position.y + size)
+  scale = size / 128
+  spacing = 1
+  line_spacing = 0.85
+  for character in text:
+    if character == "\n":    
+      caret.x = position.x
+      caret.y += size * line_spacing
+      continue
+
+    glyph = font.get_glyph(ord(character))
+
+    if not glyph:
+      continue
+    
+    draw_glyph(glyph, caret, scale)
+    caret.x += glyph.advance * scale * spacing
+
+
+
+
+image = Image.new("RGB", (1000, 1000)) 
+canvas = ImageDraw.Draw(image, "RGBA")
+canvas.rectangle((0, 0, 1000, 1000), fill=(60, 70, 80, 255))
+
+message = """12345
+67890
+!\"$%
+^&*()_
+abcde
+fghij
+klmno
+pqrst
+uvwxy
+z.
+"""
+
+text(font_low, message, Point(10, 110), 100)
+text(font_medium, message, Point(350, 110), 100)
+text(font_high, message, Point(700, 110), 100)
+
+
+text(font_high, "Roboto Black", Point(10, -10), 64)
+
+text(font_high, "Low:", Point(10, 50), 64)
+text(font_high, "Medium:", Point(350, 50), 64)
+text(font_high, "High:", Point(700, 50), 64)
+
+image.show()

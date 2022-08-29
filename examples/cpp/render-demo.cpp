@@ -1,4 +1,4 @@
-#include "pretty_alright_fonts.hpp"
+#include "alright-fonts.hpp"
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
@@ -52,7 +52,7 @@ void line(int32_t x1, int32_t y1, int32_t x2, int32_t y2, color c) {
 int main() {
   std::string font_path = "../sample-fonts/Roboto/Roboto-Black.paf";
 /*
-  // initialise pretty alright fonts
+  // initialise alright fonts
   init(render_tile_callback, rect_t(0, 0, WIDTH, HEIGHT));
 
   // load a font
