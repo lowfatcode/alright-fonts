@@ -1,4 +1,4 @@
-<img src="logo.png" alt="Alright Fonts logo" width="300px">
+<img src="logo.png" alt="Alright Fonts logo" width="500px">
 
 
 # The font format designed for embedded and low resource platforms.
