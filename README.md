@@ -1,7 +1,6 @@
 <img src="logo.png" alt="Alright Fonts logo" width="500px">
 
-
-# The font format designed for embedded and low resource platforms.
+# Alright Fonts - a font format for embedded and low resource platforms.
 
 ## Why?
 
@@ -25,27 +24,27 @@ Features:
 
 - support for TTF and OTF fonts
 - small file size - Roboto Black printable ASCII set in ~4kB (~40 bytes per glyph)
-- libraries for C++ and Python
-- tunable settings to trade off file size, contour complexity, and visual quality
+- libraries for C17 and Python
+- tunable settings to trade off file size, path complexity, and visual quality
 - glyph dictionary includes advance and bounding box metrics for fast layout
 - supports utf-8 codepoints or ascii character code
 - support for non ASCII characters such as Kanji (海賊ロボ忍者さる) or Cyrillic
 - easy to parse - entire specification is listed below
 - coordinates scaled to power of two bounds avoiding slow divide when rendering
 - create custom font packs containing only the characters that are needed
-- decomposes all glyph contours (strokes) into simple polylines for easy rendering
+- decomposes all glyph paths (strokes) into simple polylines for easy rendering
 
 Alright Fonts includes:
 
 - `afinate` an extraction and encoding tool to create Alright Font (.af) files 
 - `python_alright_fonts` a Python library for encoding and loading Alright Fonts
-- `alright-fonts.hpp` a reference C++ library implementation
+- `alright-fonts.h` a reference C17 implementation
 
 The repository also includes some examples:
 
 - `render-demo` a Python demo of rendering text
 
-> The C++reference renderer should be straightforward to embed in any C++ project - alternatively it can be used as a guide for implementing your own renderer.
+> The C17 reference renderer should be straightforward to embed in any project - alternatively it can be used as a guide for implementing your own renderer.
 
 ## Creating a font pack with the `afinate` tool
 
@@ -82,54 +81,53 @@ The file `roboto-abcdefg.af` is now ready to embed into your project.
 
 ## The Alright Fonts file format
 
-An Alright Fonts file consists of an 8-byte header, followed by a number of glyphs, followed by the contour data for the glyphs.
+An Alright Fonts file consists of a 12-byte header, followed by a dictionary of glyphs definitions, followed by the path and point data that define those glyphs.
 
-|size (bytes)|description|
-|--:|---|
-|`8`|header|
-|`9`|glyph dictionary entry 1|
-|`9`|glyph dictionary entry ..|
-|`9`|glyph dictionary entry n|
-|variable|glyph 1 contours|
-|variable|glyph .. contours|
-|variable|glyph n contours|
+|size (bytes)|description|count (`n`)|
+|--:|---|---|
+|`12`|header|1|
+|`8` * `n`|glyph dictionary|total number of glyphs|
+|`1` * `n`|glyph paths|total number of paths|
+|`2` * `n`|glyph path points|total number of points|
 
 ### Header
 
-The very basic header includes a magic marker for identification, the number of glyphs present in the file, a scaling factor, and a set of flags.
+The header contains several key pieces of information: a magic marker for identification, the total number of glyphs in the file, and a collection of flags (not yet used). Additionally, it provides the overall counts for paths and points, simplifying the allocation of buffers before parsing.
 
 |size (bytes)|name|type|notes|
 |--:|---|---|---|
 |`4`|`"af!?"`|bytes|magic marker bytes|
-|`2`|`count`|unsigned 16-bit|number of glyphs in file|
-|`2`|`flags`|unsigned 16-bit|flags (reserved for future use)|
+|`2`|`flags`|unsigned integer|flags (reserved for future use)|
+|`2`|`glyphs`|unsigned integer|number of glyphs|
+|`2`|`paths`|unsigned integer|total number of paths|
+|`2`|`points`|unsigned integer|total number of points|
 
 #### Coordinate normalisation and scaling
 
-All coordinates of the glyph (bounding boxes, advances, and contour points) are divided by the largest dimension of the bounding box that contains all glyphs - effectively normalising them to a common `-1..1 x -1..1` box. The coordinates are then multiplied by `127` scaling them up to the range `-128` to `127`.
+All glyph coordinates - including bounding boxes, advances, and path points - are normalized to a common `-1` to `1` scale. This is achieved by dividing them by the largest dimension of the bounding box that encompasses all glyphs. Subsequently, these normalized coordinates are scaled up by multiplying them by `127`, bringing them into a range of `-128` to `127`.
 
-This scale was chosen for a number of reasons:
+This scaling factor was selected for several reasons:
 
-- contour coordinates encode as single bytes reducing file size
-- provides good enough resolution to retain fine detail even on complex glyphs
-- avoid expensive divide when scaling during rendering: `(size_px * coordinate) >> 8`
-
+- Encoding path coordinates as single bytes minimizes the file size.
+- Offers sufficient resolution to maintain fine details, even in complex glyphs.
+- Eliminates the need for costly division operations during rendering, as the scaling can be performed using the shift-right operation: `(size_px * coordinate) >> 8`.
+  
 #### Flags
 
 Let's hedge our bets.
 
 Being an English software developer ~~it's possible~~ an absolute certainty that I don't fully understand every nuance of every language used globally - heck, I can just barely handle my own. 
 
-It's also likely that we may want, in future, to add a feature or two:
+It's also likely that we may want, in future, to add a feature or two such as:
 
-- excluding glyph bounding boxes 
-- including glyph pair kerning data
-- allowing 4-byte character codepoints
-- allow a finer scale for coordinates (i.e. `-65536..65535`)
-- alternative packing methods for contour data
-- better support for vertical or LTR languages
+- Exclude glyph bounding boxes.
+- Add glyph pair kerning data.
+- Allow 4-byte character codepoints.
+- Support a finer scale for coordinates (i.e. `-65536` to `65535`).
+- Alternative packing methods for path data.
+- Better support for vertical or left-to-right languages.
 
-The `flags` field is designed to allow the addition of features like these in the future while allowing parsers to implement none, some, or all of them. If a parser encounters a `1` bit in the `flags` field that it doesn't implement then it should reject the file with an error.
+The `flags` field is designed for future extensibility, allowing parsers to implement none, some, or all upcoming features. If a parser encounters a `1` bit in the `flags` field for a feature it does not support, the parser should reject the file and return an error.
 
 *There are currently no flags and this feature is reserved for future use.*
 
@@ -137,9 +135,9 @@ The `flags` field is designed to allow the addition of features like these in th
 
 Following the header is the glyph dictionary which contains entries for all of the glyphs sorted by their utf-8 codepoint or ascii character code.
 
-Each entry includes the character codepoint, some basic metrics, and length of its contour data.
+Each entry includes the character codepoint, some basic metrics, and length of its path data.
 
-> The inclusion of bounding box and advance metrics makes it very performant to calculate the bounds of a piece of text (there is no need to interrogate the contour data).
+> The inclusion of bounding box and advance metrics makes it very performant to calculate the bounds of a piece of text (there is no need to interrogate the path data).
 
 The glyphs are laid out one after another in the file:
 
@@ -151,29 +149,39 @@ The glyphs are laid out one after another in the file:
 |`1`|`bbox_w`|unsigned integer|width of bounding box|
 |`1`|`bbox_h`|unsigned integer|height of bounding box|
 |`1`|`advance`|unsigned integer|horizontal or vertical advance|
-|`2`|`contour_size`|unsigned integer|length of contour data in bytes|
+|`1`|`paths`|unsigned integer|number of paths|
 
-...and repeat for one entry per glyph.
+...and repeat for each glyph.
 
-### Glyph contour data
+### Glyph paths
 
-Immediately after the glyph dictionary comes the glyph contour data. With each glyph in the same order they appear in the dictionary.
+Immediately after the glyph dictionary comes the glyph path data. With each glyph in the same order they appear in the dictionary.
 
-A glyph can have multiple contours, each starts with a 16-bit value containing the number of points in the contour followed by a list of contour coordinates stored as `x`, `y` pairs.
-
-To denote the end of the contours of a glyph there will be a 16-bit zero value - effectively declaring a final contour with no points.
+A glyph can have multiple paths, each with a different number of points.
 
 |size (bytes)|name|type|notes|
 |--:|---|---|---|
-|`2`|`count`|unsigned 16-bit|count of coordinates in first contour|
+|`1`|`points`|unsigned integer|count of points in first path|
+|..|..|..|..|
+|`1`|`points n`|unsigned integer|count of points in nth path|
+
+...and repeat for each glyph.
+
+### Glyph path points
+
+Immediately after the glyph paths come the glyph path points. With the points for each path in the same order they appear in the glyph paths.
+
+Following on is the point data for the paths stored as `x`, `y` pairs.
+
+|size (bytes)|name|type|notes|
+|--:|---|---|---|
 |`1`|`point 1 x`|signed integer|first point x component|
 |`1`|`point 1 y`|signed integer|first point y component|
 ||..|..|..|
 |`1`|`point n x`|signed integer|nth point x component|
-|`1`|`point n y`|signed integer|nth  point y component|
-|`2`|`count`|unsigned 16-bit|count of coordinates in second contour|
-|..|..|..|..|
-|`2`|`count`|unsigned 16-bit|0 value denotes end of contours for glyph|
+|`1`|`point n y`|signed integer|nth point y component|
+
+...and repeat for each glyph path.
 
 ## Examples
 

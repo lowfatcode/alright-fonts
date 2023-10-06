@@ -1,0 +1,2 @@
+freetype-py==2.4.0
+simplification==0.7.8

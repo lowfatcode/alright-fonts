@@ -111,16 +111,22 @@ if len(encoder.glyphs) == 0:
 print("  - header")
 result = bytes()
 result += b"af!?"
-result += struct.pack(">H", len(encoder.glyphs))
 result += struct.pack(">H", 0) # no flags to set
+result += struct.pack(">H", len(encoder.glyphs))
+result += struct.pack(">H", encoder.total_path_count())
+result += struct.pack(">H", encoder.total_point_count())
 
 print("  - glyph dictionary")
 for codepoint, glyph in encoder.glyphs.items():
   result += encoder.get_packed_glyph(glyph)
 
-print("  - glyph contours")
+print("  - glyph paths")
 for codepoint, glyph in encoder.glyphs.items():
-  result += encoder.get_packed_glyph_contours(glyph)
+  result += encoder.get_packed_glyph_paths(glyph)
+
+print("  - glyph path points")
+for codepoint, glyph in encoder.glyphs.items():
+  result += encoder.get_packed_glyph_path_points(glyph)
 
 
 # write out the resulting paf font file in requested format
@@ -148,7 +154,7 @@ with open(args.out, "wb") as outfile:
 
   # python array
   if args.format == "python":
-    ooutfileut.write(b"_font = bytes([\n")
+    outfile.write(b"_font = bytes([\n")
     i = 0
     while i < len(result):
       line = result[i:i + 12]

@@ -1,0 +1,24 @@
+{
+    "files.associations": {
+        "vector": "cpp",
+        "new": "cpp",
+        "limits": "cpp",
+        "chrono": "cpp",
+        "algorithm": "cpp",
+        "charconv": "cpp",
+        "__bit_reference": "cpp",
+        "__hash_table": "cpp",
+        "__split_buffer": "cpp",
+        "__tree": "cpp",
+        "array": "cpp",
+        "initializer_list": "cpp",
+        "ios": "cpp",
+        "map": "cpp",
+        "string": "cpp",
+        "string_view": "cpp",
+        "unordered_map": "cpp",
+        "__locale": "c",
+        "optional": "c",
+        "pretty-poly.h": "c"
+    }
+}

@@ -1,19 +1,6 @@
 import freetype, struct
 from . import Glyph, Point
 
-# contour encoding
-# ===========================================================================
-
-def pack_glyph_contours(glyph):
-  result = bytes()
-  for contour in glyph.contours:      
-    result += struct.pack(">H", len(contour))
-    for point in contour:
-      result += struct.pack(">bb", point.x, point.y)
-  # end of contours marker
-  result += struct.pack(">H", 0)
-  return result      
-
 class Segment():
   def __init__(self, start):
     self.start = start
@@ -178,11 +165,40 @@ class Encoder():
     return self.glyphs[codepoint]
 
   def get_packed_glyph(self, glyph):
-    self.packed_glyph_contours[glyph.codepoint] = pack_glyph_contours(glyph)
-    pack_format = ">HbbBBBH"
-    return struct.pack(pack_format, glyph.codepoint, 
-      glyph.bbox_x, glyph.bbox_y, glyph.bbox_w, glyph.bbox_h, glyph.advance, 
-      len(self.packed_glyph_contours[glyph.codepoint]))
+    pack_format = ">HbbBBBB"
+    return struct.pack(
+      pack_format, 
+      glyph.codepoint, 
+      glyph.bbox_x, 
+      glyph.bbox_y, 
+      glyph.bbox_w, 
+      glyph.bbox_h, 
+      glyph.advance, 
+      len(glyph.contours)
+    )
 
-  def get_packed_glyph_contours(self, glyph):
-    return self.packed_glyph_contours[glyph.codepoint]
+  def get_packed_glyph_paths(self, glyph):
+    result = bytes()
+    for contour in glyph.contours:      
+      result += struct.pack(">B", len(contour))
+    return result      
+
+  def get_packed_glyph_path_points(self, glyph):
+    result = bytes()
+    for contour in glyph.contours:      
+      for point in contour:
+        result += struct.pack(">bb", point.x, point.y)
+    return result      
+
+  def total_path_count(self):
+    total = 0
+    for glyph in self.glyphs:
+      total += len(self.glyphs[glyph].contours)
+    return total
+  
+  def total_point_count(self):
+    total = 0
+    for glyph in self.glyphs:
+      for contour in self.glyphs[glyph].contours:
+        total += len(contour)
+    return total  
