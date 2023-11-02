@@ -118,9 +118,10 @@ def load_glyph(face, codepoint, scale_factor, quality=1):
       tags.pop(0)
 
       # add any control points that exist
-      while tags[0] & 0b1 == 0:
-        segment.add_control(points.pop(0))
-        tags.pop(0)
+      if (tags[0]):
+        while tags[0] & 0b1 == 0:
+          segment.add_control(points.pop(0))
+          tags.pop(0)
 
       # set end point of segment (do not remove the point
       # from our list as it will be the start point for the
