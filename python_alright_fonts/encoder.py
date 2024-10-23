@@ -1,60 +1,7 @@
 import freetype, struct
 from . import Glyph, Point
+from simplification.cutil import simplify_coords_vwp
 
-class Segment():
-  def __init__(self, start):
-    self.start = start
-    self.control = []
-    self.end = None
-
-  def add_control(self, point):
-    self.control.append(point)
-
-  def set_end(self, end):
-    self.end = end
-
-  def bezier_point(t, points):
-    if len(points) == 1:
-      return points[0]
-    a = Segment.bezier_point(t, points[:-1])
-    b = Segment.bezier_point(t, points[1:])
-    return Point((1 - t) * a.x + t * b.x, (1 - t) * a.y + t * b.y)
-    
-  def point_at(self, t):
-    return Segment.bezier_point(t, [self.start] + self.control + [self.end])
-    
-  # returns the list of points that make up a line segment or a 
-  # bezier curve, does not return the last point as that will be
-  # the start point of the next segment and we don't want duplicate 
-  # points
-  def decompose(self, quality=1):
-    points = []
-
-    if len(self.control) > 0:
-
-      # create an array of interpolated coordinates
-      coords = []
-      # number of control points on the bezier is a fair proxy for 
-      # its complexity, we'll use that to determine how many 
-      # straight line segments to generate initially
-      count = len(self.control) * 3
-      for i in range(0, count):
-        point = self.point_at(i / count)
-        coords.append([point.x, point.y])
-
-      # use simplification library to reduce the number of coordinates
-      from simplification.cutil import simplify_coords_vwp      
-      simplified = simplify_coords_vwp(coords, quality)
-
-      points = []
-      for coord in simplified[:-1]:
-        points.append(Point(int(coord[0]), int(coord[1])))   
-    else:
-      # straight line segment
-      points.append(self.start)
-
-    return points
-  
 
 def load_glyph(face, codepoint, scale_factor, quality=1):
   # glyph doesn't exist in face
@@ -66,7 +13,7 @@ def load_glyph(face, codepoint, scale_factor, quality=1):
     return None
 
   # load the glyph
-  face.load_char(codepoint)
+  face.load_char(codepoint, freetype.FT_LOAD_PEDANTIC)
 
   glyph = Glyph() 
   glyph.codepoint = codepoint # utf-8 codepoint or ascii character code
@@ -82,53 +29,76 @@ def load_glyph(face, codepoint, scale_factor, quality=1):
   # extract glyph contours
   outline = face.glyph.outline
   glyph.contours = []
-  start = 0
+  #start = 0
 
-  for end in outline.contours:
-    # extract the points for this contour
-    points = [Point(p) for p in outline.points[start:end + 1]]
-    tags = outline.tags[start:end + 1]
+  COMPLEXITY = 3
 
-    # attach start point to end to close the loop
-    points.append(points[0])
-    tags.append(tags[0])
+  def move_to(p, ctx):
+    ctx.contours.append([Point(p.x, p.y)])
 
-    # invert the y axis, scale, and round the values in the contour
-    points = [p.scale(scale_factor, -scale_factor).round() for p in points]
+  def line_to(a, ctx):
+    ctx.contours[-1].append(Point(a.x, a.y))
 
-    # create list of segments for this contour
-    contour = []
+  def quadratic_bezier(t, src, c1, dst):
+    return [
+      (1 - t) * (1 - t) * src.x + 2 * (1 - t) * t * c1.x + t * t * dst.x,
+      (1 - t) * (1 - t) * src.y + 2 * (1 - t) * t * c1.y + t * t * dst.y
+    ]
+
+  def conic_to(c1, dst, ctx):
+    # Draw a quadratic bezier from the previous point to dst, with control c1
+
+    # Get the source point (last point in this contour)
+    src = ctx.contours[-1][-1]
+    c1 = Point(c1.x, c1.y)
+    dst = Point(dst.x, dst.y)
+
+    coords = []
+    for i in range(COMPLEXITY):
+      t = i / COMPLEXITY
+      coords.append(quadratic_bezier(t, src, c1, dst))
+
+    simplified = simplify_coords_vwp(coords, quality)
+
+    for coord in simplified:
+      ctx.contours[-1].append(Point(int(coord[0]), int(coord[1])))
+
+  def cubic_bezier(t, src, c1, c2, dst):
+    return [
+      ((1 - t) ** 3) * src.x + 3 * ((1 - t) ** 2) * t * c1.x + 3 * (1 - t) * (t ** 2) * c2.x + (t ** 3) * dst.x,
+      ((1 - t) ** 3) * src.y + 3 * ((1 - t) ** 2) * t * c1.y + 3 * (1 - t) * (t ** 2) * c2.y + (t ** 3) * dst.y
+    ]
+
+  def cubic_to(c1, c2, dst, ctx):
+    # Draw a cubic bezier from the previous point to dst, with controls c1 and c2
+
+    # Get the source point (last point in this contour)
+    src = ctx.contours[-1][-1]
+    c1 = Point(c1.x, c1.y)
+    c2 = Point(c2.x, c2.y)
+    dst = Point(dst.x, dst.y)
+
+    coords = []
+    for i in range(COMPLEXITY):
+      t = i / COMPLEXITY
+      coords.append(cubic_bezier(t, src, c1, c2, dst))
+
+    simplified = simplify_coords_vwp(coords, quality)
+
+    for coord in simplified:
+      ctx.contours[-1].append(Point(int(coord[0]), int(coord[1])))
     
-    while len(points) > 1:
-      # create a new segment with start point
-      segment = Segment(points.pop(0))
-      tags.pop(0)
+  outline.decompose(glyph, move_to=move_to, line_to=line_to, conic_to=conic_to, cubic_to=cubic_to)
 
-      # add any control points that exist
-      while tags[0] & 0b1 == 0:
-        segment.add_control(points.pop(0))
-        tags.pop(0)
+  for i, c in enumerate(glyph.contours):
+    glyph.contours[i] = [p.scale(scale_factor, -scale_factor).round() for p in c]
 
-      # set end point of segment (do not remove the point
-      # from our list as it will be the start point for the
-      # next segment)
-      segment.set_end(points[0])
-
-      # decompose the segment into points and add to the contour
-      # we're building
-      contour += segment.decompose(quality)
-
-    # store the contour
-    glyph.contours.append(contour)
-
-    # the start of the next contour is the end of this one
-    start = end + 1
-  
   return glyph
     
 class Encoder():
   def __init__(self, font, quality = 1):
     self.face = freetype.Face(font)
+    print(self.face.get_format())
     self.bbox_l = self.face.bbox.xMin
     self.bbox_t = self.face.bbox.yMin
     self.bbox_r = self.face.bbox.xMax
