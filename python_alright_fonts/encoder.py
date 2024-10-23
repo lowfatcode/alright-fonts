@@ -3,7 +3,7 @@ from . import Glyph, Point
 from simplification.cutil import simplify_coords_vwp
 
 
-def load_glyph(face, codepoint, scale_factor, quality=1):
+def load_glyph(face, codepoint, scale_factor, quality=1, complexity=3):
   # glyph doesn't exist in face
   if face.get_char_index(codepoint) == 0:
     return None
@@ -31,13 +31,12 @@ def load_glyph(face, codepoint, scale_factor, quality=1):
   glyph.contours = []
   #start = 0
 
-  COMPLEXITY = 3
-
   def move_to(p, ctx):
-    ctx.contours.append([Point(p.x, p.y)])
+    # Move to always starts a new contour
+    ctx.contours.append([[p.x, p.y]])
 
   def line_to(a, ctx):
-    ctx.contours[-1].append(Point(a.x, a.y))
+    ctx.contours[-1].append([a.x, a.y])
 
   def quadratic_bezier(t, src, c1, dst):
     return [
@@ -49,19 +48,14 @@ def load_glyph(face, codepoint, scale_factor, quality=1):
     # Draw a quadratic bezier from the previous point to dst, with control c1
 
     # Get the source point (last point in this contour)
-    src = ctx.contours[-1][-1]
+    src = Point(ctx.contours[-1][-1][0], ctx.contours[-1][-1][1])
     c1 = Point(c1.x, c1.y)
     dst = Point(dst.x, dst.y)
 
-    coords = []
-    for i in range(COMPLEXITY):
-      t = i / COMPLEXITY
-      coords.append(quadratic_bezier(t, src, c1, dst))
-
-    simplified = simplify_coords_vwp(coords, quality)
-
-    for coord in simplified:
-      ctx.contours[-1].append(Point(int(coord[0]), int(coord[1])))
+    # simplify_coords_vwp will discard overlapping/proximal/redundant coords
+    for i in range(complexity):
+      t = i / complexity
+      ctx.contours[-1].append(quadratic_bezier(t, src, c1, dst))
 
   def cubic_bezier(t, src, c1, c2, dst):
     return [
@@ -73,30 +67,26 @@ def load_glyph(face, codepoint, scale_factor, quality=1):
     # Draw a cubic bezier from the previous point to dst, with controls c1 and c2
 
     # Get the source point (last point in this contour)
-    src = ctx.contours[-1][-1]
+    src = Point(ctx.contours[-1][-1][0], ctx.contours[-1][-1][1])
     c1 = Point(c1.x, c1.y)
     c2 = Point(c2.x, c2.y)
     dst = Point(dst.x, dst.y)
 
-    coords = []
-    for i in range(COMPLEXITY):
-      t = i / COMPLEXITY
-      coords.append(cubic_bezier(t, src, c1, c2, dst))
+    # simplify_coords_vwp will discard overlapping/proximal/redundant coords
+    for i in range(complexity):
+      t = i / complexity
+      ctx.contours[-1].append(cubic_bezier(t, src, c1, c2, dst))
 
-    simplified = simplify_coords_vwp(coords, quality)
-
-    for coord in simplified:
-      ctx.contours[-1].append(Point(int(coord[0]), int(coord[1])))
-    
   outline.decompose(glyph, move_to=move_to, line_to=line_to, conic_to=conic_to, cubic_to=cubic_to)
 
+  # Simplify, scale and round the final contours
   for i, c in enumerate(glyph.contours):
-    glyph.contours[i] = [p.scale(scale_factor, -scale_factor).round() for p in c]
+    glyph.contours[i] = [Point(p[0], p[1]).scale(scale_factor, -scale_factor).round() for p in simplify_coords_vwp(c, quality)]
 
   return glyph
     
 class Encoder():
-  def __init__(self, font, quality = 1):
+  def __init__(self, font, quality = 1, complexity = 3):
     self.face = freetype.Face(font)
     print(self.face.get_format())
     self.bbox_l = self.face.bbox.xMin
@@ -107,6 +97,7 @@ class Encoder():
     self.packed_glyph_contours = {}
 
     self.quality = quality
+    self.complexity = complexity
 
     normalising_scale_factor = max(
       abs(self.bbox_l), abs(self.bbox_t), 
@@ -128,7 +119,7 @@ class Encoder():
 
   def get_glyph(self, codepoint):
     if codepoint not in self.glyphs:
-      glyph = load_glyph(self.face, codepoint, self.scale_factor, self.quality)
+      glyph = load_glyph(self.face, codepoint, self.scale_factor, self.quality, self.complexity)
       if not glyph:
         return None
       self.glyphs[codepoint] = glyph
@@ -149,7 +140,9 @@ class Encoder():
 
   def get_packed_glyph_paths(self, glyph):
     result = bytes()
-    for contour in glyph.contours:      
+    for contour in glyph.contours:
+      if len(contour) > 255:
+        raise RuntimeError(f"Fatal: Contour too big! {len(contour)}")
       result += struct.pack(">B", len(contour))
     return result      
 
