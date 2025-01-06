@@ -127,7 +127,7 @@ It's also likely that we may want, in future, to add a feature or two:
 - allowing 4-byte character codepoints
 - allow a finer scale for coordinates (i.e. `-65536..65535`)
 - alternative packing methods for contour data
-- better support for vertical or LTR languages
+- better support for vertical or RTL languages
 
 The `flags` field is designed to allow the addition of features like these in the future while allowing parsers to implement none, some, or all of them. If a parser encounters a `1` bit in the `flags` field that it doesn't implement then it should reject the file with an error.
 
